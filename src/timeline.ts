@@ -52,6 +52,9 @@ import { TimelineScrollSource } from './enums/timelineScrollSource';
 import { defaultTimelineConsts } from './settings/defaults/defaultTimelineConsts';
 import { defaultTimelineOptions } from './settings/defaults/defaultTimelineOptions';
 
+import { DrawingContextFactory } from './drawing/DrawingContextFactory';
+import { IDrawingContext } from './drawing/IDrawingContext';
+
 export class Timeline extends TimelineEventsEmitter {
   /**
    * component container.
@@ -70,10 +73,6 @@ export class Timeline extends TimelineEventsEmitter {
    * While canvas has no real size, this element is used to create virtual scroll on the parent element.
    */
   _scrollContent: HTMLElement | null = null;
-  /**
-   * Rendering context
-   */
-  _ctx: CanvasRenderingContext2D | null = null;
   /**
    * Components settings
    */
@@ -160,6 +159,12 @@ export class Timeline extends TimelineEventsEmitter {
    * Indication when scroll are drag or click is started.
    */
   _scrollAreaClickOrDragStarted = false;
+
+  /**
+   * Rendering context
+   */
+  private _drawingContext: IDrawingContext | null = null;
+
   /**
    * Create Timeline instance
    * @param options Timeline settings.
@@ -168,6 +173,7 @@ export class Timeline extends TimelineEventsEmitter {
   constructor(options: TimelineOptions | null = null, model: TimelineModel | null = null) {
     super();
     this._options = TimelineUtils.cloneOptions(defaultTimelineOptions);
+
     // Allow to create instance without an error to perform tests.
     if (options || model) {
       this.initialize(options, model);
@@ -253,21 +259,9 @@ export class Timeline extends TimelineEventsEmitter {
     this._canvas.style.width = this._canvas.style.height = 'calc(100% -' + (scrollBarWidth || 17) + 'px)';
 
     this._container.appendChild(this._canvas);
-    this._ctx = this._getCtx();
+    this._drawingContext = DrawingContextFactory.create(this._canvas);
   };
-  /**
-   * Get drawing context
-   */
-  _getCtx(): CanvasRenderingContext2D | null {
-    if (!this._canvas) {
-      return null;
-    }
-    if (this._ctx) {
-      return this._ctx;
-    }
-    this._ctx = this._canvas.getContext('2d');
-    return this._ctx;
-  }
+
   /**
    * Subscribe current component on the related events.
    * Private. Use initialize method instead.
@@ -347,7 +341,7 @@ export class Timeline extends TimelineEventsEmitter {
     this._canvas = null;
     this._scrollContainer = null;
     this._scrollContent = null;
-    this._ctx = null;
+    this._drawingContext = null;
     this._cleanUpSelection();
   };
   /**
@@ -1543,7 +1537,8 @@ export class Timeline extends TimelineEventsEmitter {
    * Render line gauge ticks.
    */
   _renderTicks = (): void => {
-    if (!this._ctx || !this._ctx.canvas || this._ctx.canvas.clientWidth <= 0 || this._ctx.canvas.clientHeight <= 0 || !this._options || !this._options.stepPx) {
+    // TODO: figure out what to do with canvas size
+    if (!this._drawingContext /*|| this._drawingContext.canvas.clientWidth <= 0 || this._ctx.canvas.clientHeight <= 0*/ || !this._options || !this._options.stepPx) {
       return;
     }
     const screenWidth = this._canvasClientWidth() - this._leftMargin();
@@ -1583,40 +1578,39 @@ export class Timeline extends TimelineEventsEmitter {
     }
 
     let lastTextStart = 0;
-    this._ctx.save();
+    this._drawingContext.save();
     const headerHeight = TimelineStyleUtils.headerHeight(this._options);
     const tickHeight = headerHeight / 2;
     const smallTickHeight = headerHeight / 1.3;
     for (let i = fromVal; i <= toVal; i += step) {
       // local
       const sharpPos = this._getSharp(this._toScreenPx(i));
-      this._ctx.save();
-      this._ctx.beginPath();
-      this._ctx.setLineDash([4]);
-      this._ctx.lineWidth = 1;
+      this._drawingContext.save();
+      this._drawingContext.beginPath();
+      this._drawingContext.setStyle({ lineDash: [4], lineWidth: 1 });
       if (this._options.tickColor) {
-        this._ctx.strokeStyle = this._options.tickColor;
+        this._drawingContext.setStyle({ strokeStyle: this._options.tickColor });
       }
-      TimelineUtils.drawLine(this._ctx, sharpPos, tickHeight, sharpPos, headerHeight);
-      this._ctx.stroke();
+      TimelineUtils.drawLine(this._drawingContext, sharpPos, tickHeight, sharpPos, headerHeight);
+      this._drawingContext.stroke();
       if (this._options.labelsColor) {
-        this._ctx.fillStyle = this._options.labelsColor;
+        this._drawingContext.setStyle({ fillStyle: this._options.labelsColor });
       }
       if (this._options.font) {
-        this._ctx.font = this._options.font;
+        this._drawingContext.setStyle({ font: this._options.font });
       }
 
       const text = this._formatUnitsText(i);
-      const textSize = this._ctx.measureText(text);
+      const textSize = this._drawingContext.measureText(text);
 
       const textX = sharpPos - textSize.width / 2;
       // skip text render if there is no space for it.
       if (isNaN(lastTextStart) || lastTextStart <= textX) {
         lastTextStart = textX + textSize.width;
-        this._ctx.fillText(text, textX, 10);
+        this._drawingContext.fillText(text, { x: textX, y: 10 });
       }
 
-      this._ctx.restore();
+      this._drawingContext.restore();
       if (!TimelineUtils.isNumber(smallStep) || smallStep <= 0) {
         continue;
       }
@@ -1624,17 +1618,17 @@ export class Timeline extends TimelineEventsEmitter {
       for (let x = i + smallStep; x < i + step; x += smallStep) {
         // local
         const nextSharpPos = this._getSharp(this._toScreenPx(x));
-        this._ctx.beginPath();
-        this._ctx.lineWidth = this._pixelRatio;
+        this._drawingContext.beginPath();
+        this._drawingContext.setStyle({ lineWidth: 1 });
         if (this._options.tickColor) {
-          this._ctx.strokeStyle = this._options.tickColor;
+          this._drawingContext.setStyle({ strokeStyle: this._options.tickColor });
         }
-        TimelineUtils.drawLine(this._ctx, nextSharpPos, smallTickHeight, nextSharpPos, headerHeight);
-        this._ctx.stroke();
+        TimelineUtils.drawLine(this._drawingContext, nextSharpPos, smallTickHeight, nextSharpPos, headerHeight);
+        this._drawingContext.stroke();
       }
     }
 
-    this._ctx.restore();
+    this._drawingContext.restore();
   };
 
   /**
@@ -1765,7 +1759,7 @@ export class Timeline extends TimelineEventsEmitter {
    * Render timeline rows.
    */
   _renderRows = (): void => {
-    if (!this._ctx) {
+    if (!this._drawingContext) {
       return;
     }
     const viewModel = this._generateViewModel();
@@ -1773,38 +1767,38 @@ export class Timeline extends TimelineEventsEmitter {
       return;
     }
     try {
-      this._ctx.save();
+      this._drawingContext.save();
 
       viewModel.rowsViewModels.forEach((rowViewModel) => {
-        if (!rowViewModel || !this._ctx) {
+        if (!rowViewModel || !this._drawingContext) {
           return;
         }
 
-        this._ctx.fillStyle = TimelineStyleUtils.getRowFillColor(rowViewModel.model.style || null, this._options);
+        this._drawingContext.setStyle({ fillStyle: TimelineStyleUtils.getRowFillColor(rowViewModel.model.style || null, this._options) });
         //this._ctx.fillRect(data.areaRect.x, data.areaRect.y, data.areaRect.w, data.areaRect.h);
         // Note: bounds used instead of the clip while clip is slow!
         const bounds = this._cutBounds(rowViewModel.size);
         if (bounds?.rect) {
           const rect = bounds?.rect;
-          this._ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+          this._drawingContext.fillRect({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
         }
 
         this._renderGroupBounds(rowViewModel);
       });
     } finally {
-      this._ctx.restore();
+      this._drawingContext.restore();
     }
   };
   /**
    * Render group for the row.
    */
   _renderGroupBounds = (rowViewModel: TimelineRowViewModel): void => {
-    if (!rowViewModel || !this._ctx) {
+    if (!rowViewModel || !this._drawingContext) {
       return;
     }
 
     rowViewModel?.groupsViewModels?.forEach((groupsViewModels) => {
-      if (!this._ctx) {
+      if (!this._drawingContext) {
         return;
       }
       if ((groupsViewModels?.keyframesViewModels?.length || 0) <= 1) {
@@ -1820,7 +1814,7 @@ export class Timeline extends TimelineEventsEmitter {
       }
 
       try {
-        this._ctx.save();
+        this._drawingContext.save();
 
         // get the bounds on a canvas
         const rectBounds = this._cutBounds(groupsViewModels.size);
@@ -1830,19 +1824,28 @@ export class Timeline extends TimelineEventsEmitter {
             groupStrokeThickness = 0;
           }
           // Manipulate it again
-          this._ctx.strokeStyle = groupStrokeThickness > 0 ? strokeColor : '';
-          this._ctx.fillStyle = groupFillColor;
-          this._ctx.lineWidth = groupStrokeThickness;
-          // Different radii for each corner, top-left clockwise to bottom-left
-          this._ctx.beginPath();
-          this._ctx.roundRect(rect.x + groupStrokeThickness, rect.y + groupStrokeThickness, rect.width - groupStrokeThickness, rect.height - groupStrokeThickness, groupsRadii);
-          this._ctx.fill();
+          this._drawingContext.setStyle({
+            strokeStyle: groupStrokeThickness > 0 ? strokeColor : '',
+            fillStyle: groupFillColor,
+            lineWidth: groupStrokeThickness,
+          });
+          this._drawingContext.beginPath();
+          this._drawingContext.drawRoundedRect(
+            {
+              x: rect.x + groupStrokeThickness,
+              y: rect.y + groupStrokeThickness,
+              width: rect.width - groupStrokeThickness,
+              height: rect.height - groupStrokeThickness,
+            },
+            groupsRadii as number | number[],
+          );
+          this._drawingContext.fill();
           if (groupStrokeThickness > 0) {
-            this._ctx.stroke();
+            this._drawingContext.stroke();
           }
         }
       } finally {
-        this._ctx.restore();
+        this._drawingContext.restore();
       }
     });
   };
@@ -1984,7 +1987,7 @@ export class Timeline extends TimelineEventsEmitter {
 
   _renderKeyframes = (): void => {
     this._forEachKeyframe((keyframeViewModel) => {
-      if (!this._ctx) {
+      if (!this._drawingContext) {
         return;
       }
       const size = keyframeViewModel.size;
@@ -2002,27 +2005,27 @@ export class Timeline extends TimelineEventsEmitter {
           return;
         }
 
-        this._ctx.save();
+        this._drawingContext.save();
 
         try {
           // Performance FIX: use clip only  when we are in the collision! Clip is slow!
           // Other keyframes should be hidden by bounds check.
           // Note: clip with just render part of the keyframe
           if (bounds && bounds.overlapY) {
-            this._ctx.beginPath();
-            this._ctx.rect(0, TimelineStyleUtils.headerHeight(this._options), this._canvasClientWidth(), this._canvasClientWidth());
-            this._ctx.clip();
+            this._drawingContext.beginPath();
+            this._drawingContext.rect({ x: 0, y: 0, width: this._canvasClientWidth(), height: TimelineStyleUtils.headerHeight(this._options) });
+            this._drawingContext.clip();
           }
 
-          this._renderKeyframe(this._ctx, keyframeViewModel);
+          this._renderKeyframe(this._drawingContext, keyframeViewModel);
         } finally {
-          this._ctx.restore();
+          this._drawingContext.restore();
         }
       }
     });
   };
 
-  _renderKeyframe = (ctx: CanvasRenderingContext2D, keyframeViewModel: TimelineKeyframeViewModel): void => {
+  _renderKeyframe = (ctx: IDrawingContext, keyframeViewModel: TimelineKeyframeViewModel): void => {
     const shape = keyframeViewModel.shape;
     if (shape === TimelineKeyframeShape.None) {
       return;
@@ -2053,105 +2056,106 @@ export class Timeline extends TimelineEventsEmitter {
       ctx.translate(x, y);
       ctx.rotate((45 * Math.PI) / 180);
       if (border > 0 && strokeColor) {
-        ctx.fillStyle = strokeColor;
-        ctx.rect(-size.width / 2, -size.height / 2, size.width, size.height);
+        ctx.setStyle({
+          fillStyle: strokeColor,
+        });
+        ctx.rect({ x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height });
         ctx.fill();
       }
 
-      ctx.fillStyle = keyframeColor;
+      ctx.setStyle({ fillStyle: keyframeColor });
       // draw main keyframe data with offset.
       ctx.translate(border, border);
-      ctx.rect(-size.width / 2, -size.height / 2, size.width - border * 2, size.height - border * 2);
+      ctx.rect({ x: -size.width / 2, y: -size.height / 2, width: size.width - border * 2, height: size.height - border * 2 });
       ctx.fill();
     } else if (shape == TimelineKeyframeShape.Circle) {
       ctx.beginPath();
       if (border > 0 && strokeColor) {
-        ctx.fillStyle = strokeColor;
+        ctx.setStyle({ fillStyle: strokeColor });
         ctx.arc(x, y, size.height, 0, 2 * Math.PI);
       }
-      ctx.fillStyle = keyframeColor;
+      ctx.setStyle({ fillStyle: keyframeColor });
       ctx.arc(x, y, size.height - border, 0, 2 * Math.PI);
       ctx.fill();
     } else if (shape == TimelineKeyframeShape.Rect) {
       ctx.beginPath();
 
       if (border > 0 && strokeColor) {
-        ctx.fillStyle = strokeColor;
-        ctx.rect(x, y, size.width, size.height);
+        ctx.setStyle({ fillStyle: strokeColor });
+        ctx.rect({ x, y, width: size.width, height: size.height });
         ctx.fill();
       }
 
-      ctx.fillStyle = keyframeColor;
-      ctx.rect(x + border, y + border, size.width - border, size.height - border);
+      ctx.setStyle({ fillStyle: keyframeColor });
+      ctx.rect({ x: x + border, y: y + border, width: size.width - border, height: size.height - border });
       ctx.fill();
     }
   };
 
   _renderSelectionRect = (): void => {
-    if (this._drag || !this._ctx || !this._canvas) {
+    if (this._drag || !this._drawingContext || !this._canvas) {
       return;
     }
-    this._ctx.save();
+    this._drawingContext.save();
     const thickness = 1;
     if (this._selectionRect && this._selectionRectEnabled) {
-      this._ctx.setLineDash([4]);
-      this._ctx.lineWidth = this._pixelRatio;
+      this._drawingContext.setStyle({ lineDash: [4], lineWidth: this._pixelRatio });
       const selectionColor = this._options.selectionColor;
       if (selectionColor) {
-        this._ctx.strokeStyle = selectionColor;
+        this._drawingContext.setStyle({ strokeStyle: selectionColor });
       }
-      this._ctx.strokeRect(
-        this._getSharp(this._selectionRect.x, thickness),
-        this._getSharp(this._selectionRect.y, thickness),
-        Math.floor(this._selectionRect.width),
-        Math.floor(this._selectionRect.height),
-      );
+      this._drawingContext.strokeRect({
+        x: this._getSharp(this._selectionRect.x, thickness),
+        y: this._getSharp(this._selectionRect.y, thickness),
+        width: Math.floor(this._selectionRect.width),
+        height: Math.floor(this._selectionRect.height),
+      });
     }
-    this._ctx.restore();
+    this._drawingContext.restore();
   };
 
   _renderBackground = (): void => {
-    if (!this._ctx || !this._canvas) {
+    if (!this._drawingContext || !this._canvas) {
       return;
     }
     if (this._options.fillColor) {
-      this._ctx.save();
-      this._ctx.beginPath();
-      this._ctx.rect(0, 0, this._canvasClientWidth(), this._canvasClientHeight());
-      this._ctx.fillStyle = this._options.fillColor;
-      this._ctx.fill();
-      this._ctx.restore();
+      this._drawingContext.save();
+      this._drawingContext.beginPath();
+      this._drawingContext.rect({ x: 0, y: 0, width: this._canvasClientWidth(), height: this._canvasClientHeight() });
+      this._drawingContext.setStyle({ fillStyle: this._options.fillColor });
+      this._drawingContext.fill();
+      this._drawingContext.restore();
     } else {
       // Clear if bg not set.
-      this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+      this._drawingContext.clear();
     }
   };
 
   _renderTimeline = (): void => {
-    if (!this._ctx || !this._options || !this._options.timelineStyle) {
+    if (!this._drawingContext || !this._options || !this._options.timelineStyle) {
       return;
     }
     const style = this._options.timelineStyle;
-    this._ctx.save();
+    this._drawingContext.save();
     try {
       const thickness = style.width || 1;
-      this._ctx.lineWidth = thickness * this._pixelRatio;
+      this._drawingContext.setStyle({ lineWidth: thickness * this._pixelRatio });
       const timeLinePos = this._getSharp(this._toScreenPx(this._val), thickness);
       if (style.strokeColor) {
-        this._ctx.strokeStyle = style.strokeColor;
+        this._drawingContext.setStyle({ strokeStyle: style.strokeColor });
       }
       if (style.fillColor) {
-        this._ctx.fillStyle = style.fillColor;
+        this._drawingContext.setStyle({ fillStyle: style.fillColor });
       }
       const y = style.marginTop || 0;
       const yBottom = style.marginBottom || 0;
-      this._ctx.beginPath();
+      this._drawingContext.beginPath();
       const canvasHeight = this._canvasClientHeight() - yBottom;
-      TimelineUtils.drawLine(this._ctx, timeLinePos, y, timeLinePos, canvasHeight);
-      this._ctx.stroke();
+      this._drawingContext.drawLine({ x: timeLinePos, y: y }, { x: timeLinePos, y: canvasHeight });
+      this._drawingContext.stroke();
       this._renderTimelineCap(timeLinePos, y);
     } finally {
-      this._ctx.restore();
+      this._drawingContext.restore();
     }
   };
   /**
@@ -2159,53 +2163,55 @@ export class Timeline extends TimelineEventsEmitter {
    */
   _renderTimelineCap = (timeLinePos: number, y: number): void => {
     const capStyle = this._options?.timelineStyle?.capStyle;
-    if (!this._ctx || !capStyle) {
+    if (!this._drawingContext || !capStyle) {
       return;
     }
     if (capStyle.capType === TimelineCapShape.None) {
       return;
     }
-    this._ctx.save();
+    this._drawingContext.save();
     try {
       const capSize = capStyle.width || 0;
       const capHeight = capStyle.height || 0;
       if (capSize && capHeight) {
-        this._ctx.strokeStyle = capStyle.strokeColor || '';
-        this._ctx.fillStyle = capStyle.fillColor || 'white';
+        this._drawingContext.setStyle({
+          strokeStyle: capStyle.strokeColor || '',
+          fillStyle: capStyle.fillColor || 'white',
+        });
         if (capStyle.capType === TimelineCapShape.Triangle) {
-          this._ctx.beginPath();
-          this._ctx.moveTo(timeLinePos - capSize / 2, y);
-          this._ctx.lineTo(timeLinePos + capSize / 2, y);
-          this._ctx.lineTo(timeLinePos, capHeight);
-          this._ctx.closePath();
-          this._ctx.stroke();
+          this._drawingContext.beginPath();
+          this._drawingContext.drawLine({ x: timeLinePos - capSize / 2, y }, { x: timeLinePos + capSize / 2, y });
+          this._drawingContext.drawLine({ x: timeLinePos + capSize / 2, y }, { x: timeLinePos, y: capHeight });
+          this._drawingContext.drawLine({ x: timeLinePos, y: capHeight }, { x: timeLinePos - capSize / 2, y });
+          this._drawingContext.closePath();
+          this._drawingContext.stroke();
         } else if (capStyle.capType === TimelineCapShape.Rect) {
-          this._ctx.fillRect(timeLinePos - capSize / 2, y, capSize, capHeight);
-          this._ctx.fill();
+          this._drawingContext.fillRect({ x: timeLinePos - capSize / 2, y, width: capSize, height: capHeight });
+          this._drawingContext.fill();
         }
       }
     } finally {
-      this._ctx.restore();
+      this._drawingContext.restore();
     }
   };
   _renderHeaderBackground = (): void => {
-    if (!this._ctx || !this._options) {
+    if (!this._drawingContext || !this._options) {
       return;
     }
     if (TimelineStyleUtils.headerHeight(this._options)) {
-      this._ctx.save();
+      this._drawingContext.save();
       // draw ticks background
-      this._ctx.lineWidth = this._pixelRatio;
+      this._drawingContext.setStyle({ lineWidth: this._pixelRatio });
       if (this._options.headerFillColor) {
         // draw ticks background
-        this._ctx.lineWidth = this._pixelRatio;
+        this._drawingContext.setStyle({ lineWidth: this._pixelRatio });
         // draw header background
-        this._ctx.fillStyle = this._options.headerFillColor;
-        this._ctx.fillRect(0, 0, this._canvasClientWidth(), TimelineStyleUtils.headerHeight(this._options));
+        this._drawingContext.setStyle({ fillStyle: this._options.headerFillColor });
+        this._drawingContext.fillRect({ x: 0, y: 0, width: this._canvasClientWidth(), height: TimelineStyleUtils.headerHeight(this._options) });
       } else {
-        this._ctx.clearRect(0, 0, this._canvasClientWidth(), TimelineStyleUtils.headerHeight(this._options));
+        this._drawingContext.clear({ x: 0, y: 0, width: this._canvasClientWidth(), height: TimelineStyleUtils.headerHeight(this._options) });
       }
-      this._ctx.restore();
+      this._drawingContext.restore();
     }
   };
 
@@ -2230,7 +2236,7 @@ export class Timeline extends TimelineEventsEmitter {
    * Redraw parts of the component in the specific order.
    */
   _redrawInternal = (): void => {
-    if (!this._ctx || !this._scrollContainer) {
+    if (!this._drawingContext || !this._scrollContainer) {
       console.log('Context is not initialized');
       return;
     }
@@ -2437,25 +2443,25 @@ export class Timeline extends TimelineEventsEmitter {
    * Apply container div size to the container on changes detected.
    */
   _updateCanvasScale = (): boolean => {
-    if (!this._scrollContainer || !this._container || !this._ctx) {
+    if (!this._scrollContainer || !this._container || !this._drawingContext) {
       console.log('Component should be initialized first.');
       return false;
     }
     let changed = false;
     const width = this._scrollContainer.clientWidth * this._pixelRatio;
     const height = this._scrollContainer.clientHeight * this._pixelRatio;
-    if (Math.floor(width) != Math.floor(this._ctx.canvas.width)) {
-      this._ctx.canvas.width = width;
+    if (Math.floor(width) != Math.floor(this._canvas!.width)) {
+      this._canvas!.width = width;
       changed = true;
     }
 
-    if (Math.floor(height) != Math.floor(this._ctx.canvas.height)) {
-      this._ctx.canvas.height = height;
+    if (Math.floor(height) != Math.floor(this._canvas!.height)) {
+      this._canvas!.height = height;
       changed = true;
     }
 
     if (changed) {
-      this._ctx.setTransform(this._pixelRatio, 0, 0, this._pixelRatio, 0, 0);
+      this._drawingContext.setTransform(this._pixelRatio, 0, 0, this._pixelRatio, 0, 0);
     }
     return changed;
   };

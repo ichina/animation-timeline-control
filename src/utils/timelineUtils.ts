@@ -1,9 +1,10 @@
 import { TimelineRanged } from '../models/timelineRanged';
 import { TimelineOptions } from '../settings/timelineOptions';
+import { IDrawingContext } from '../drawing/IDrawingContext';
 
 const defaultDenominators = [1, 2, 5, 10];
 export class TimelineUtils {
-  static drawLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number): void {
+  static drawLine(ctx: IDrawingContext, x1: number, y1: number, x2: number, y2: number): void {
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
   }

@@ -87,6 +87,10 @@ export class WebDrawingContext implements IDrawingContext {
     this.ctx.roundRect(rect.x, rect.y, rect.width, rect.height, radii);
   }
 
+  drawImage(image: CanvasImageSource, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number): void {
+    this.ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+
   fill(): void {
     this.ctx.fill();
   }

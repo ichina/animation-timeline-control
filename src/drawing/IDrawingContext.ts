@@ -49,6 +49,7 @@ export interface IDrawingContext {
   drawLine(from: Point, to: Point): void;
   drawCircle(center: Point, radius: number): void;
   drawRoundedRect(rect: Rect, radius: number | number[]): void;
+  drawImage(image: CanvasImageSource, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number): void;
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
 
   // Path filling/stroking

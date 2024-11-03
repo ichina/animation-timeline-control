@@ -56,25 +56,26 @@ import { DrawingContextFactory } from './drawing/DrawingContextFactory';
 import { IDrawingContext, Point, Rect } from './drawing/IDrawingContext';
 import { IEventSubscription, IPlatformContext, ITimer } from './platform/IPlatformContext';
 import { PlatformContextFactory } from './platform/PlatformContextFactory';
+import { IElement, ICanvasElement } from './platform/IElement';
 
 export class Timeline extends TimelineEventsEmitter {
   /**
    * component container.
    */
-  _container: HTMLElement | null = null;
+  _container: IElement | null = null;
   /**
    * Dynamically generated canvas inside of the container.
    */
-  _canvas: HTMLCanvasElement | null = null;
+  _canvas: ICanvasElement | null = null;
   /**
    * Dynamically generated scroll container.
    */
-  _scrollContainer: HTMLElement | null = null;
+  _scrollContainer: IElement | null = null;
   /**
    * Dynamically generated virtual scroll content.
    * While canvas has no real size, this element is used to create virtual scroll on the parent element.
    */
-  _scrollContent: HTMLElement | null = null;
+  _scrollContent: IElement | null = null;
   /**
    * Components settings
    */
@@ -211,23 +212,27 @@ export class Timeline extends TimelineEventsEmitter {
    * Generate component html.
    * @param id container.
    */
-  _generateContainers = (id: string | HTMLElement): void => {
-    if (id instanceof HTMLElement) {
-      this._container = id as HTMLElement;
-    } else {
+  _generateContainers = (id: string | IElement): void => {
+    if (typeof id === 'string') {
       this._container = this.platform.getElementById(id);
+    } else {
+      this._container = id as IElement;
     }
 
     if (!this._container) {
       throw new Error(`Element cannot be empty. Should be string or DOM element.`);
     }
 
-    this._scrollContainer = document.createElement('div');
-    this._scrollContent = this.platform.createElement('div') as HTMLElement;
-    this._canvas = document.createElement('canvas') as HTMLCanvasElement;
+    this._scrollContainer = this.platform.createElement('div');
+    this._scrollContent = this.platform.createElement('div') as IElement;
+    this._canvas = this.platform.createElement('canvas') as ICanvasElement;
 
     if (!this._canvas || !this._canvas.getContext) {
       console.log('Cannot initialize canvas context.');
+      return;
+    }
+    if (!this._scrollContainer) {
+      console.log('Cannot create scroll container.');
       return;
     }
     this._container.innerHTML = '';
@@ -1196,7 +1201,7 @@ export class Timeline extends TimelineEventsEmitter {
    * Private.
    * Create extended mouse position and calculate size of the selection rectangle.
    */
-  _trackMousePos(canvas: HTMLCanvasElement, mouseArgs: MouseEvent | TouchEvent): TimelineMouseData {
+  _trackMousePos(canvas: ICanvasElement, mouseArgs: MouseEvent | TouchEvent): TimelineMouseData {
     const clickArgs = this._getMousePos(canvas, mouseArgs);
     const pos = clickArgs.pos;
     clickArgs.originalVal = this._mousePosToVal(pos.x, false);
@@ -2362,7 +2367,7 @@ export class Timeline extends TimelineEventsEmitter {
    */
   _applyContainersStyles = (): void => {
     if (this._scrollContainer && this._options) {
-      const classList = this._scrollContainer.classList;
+      const classList = (this._scrollContainer as HTMLElement).classList;
       if (this._options.scrollContainerClass && !classList.contains(this._options.scrollContainerClass)) {
         classList.add(this._options.scrollContainerClass);
       }
@@ -2408,7 +2413,7 @@ export class Timeline extends TimelineEventsEmitter {
     this.redraw();
   };
 
-  _getMousePos = (canvas: HTMLCanvasElement, e: TouchEvent | MouseEvent | any): TimelineMouseData => {
+  _getMousePos = (canvas: ICanvasElement, e: TouchEvent | MouseEvent | any): TimelineMouseData => {
     let radius = 1;
     let clientX = 0;
     let clientY = 0;
@@ -2427,8 +2432,8 @@ export class Timeline extends TimelineEventsEmitter {
       scaleX = canvas.width / this._pixelRatio / rect.width, // relationship bitmap vs. element for X
       scaleY = canvas.height / this._pixelRatio / rect.height; // relationship bitmap vs. element for Y
 
-    const x = (clientX - rect.left) * scaleX;
-    const y = (clientY - rect.top) * scaleY;
+    const x = (clientX - rect.x) * scaleX;
+    const y = (clientY - rect.y) * scaleY;
     // scale mouse coordinates after they have been adjusted to be relative to element
     return {
       pos: { x, y } as Point,

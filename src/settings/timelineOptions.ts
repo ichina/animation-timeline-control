@@ -1,12 +1,13 @@
 import { TimelineRowStyle } from './styles/timelineRowStyle';
 import { TimelineStyle } from './styles/timelineStyle';
 import { TimelineRanged } from '../models/timelineRanged';
+import { IElement } from '../platform/IElement';
 
 export interface TimelineOptions extends TimelineRanged {
   /**
    * Id or HTMLElement of the timeline container.
    */
-  id?: string | HTMLElement | null;
+  id?: string | IElement | null;
   /**
    * Check whether snapping is enabled.
    */

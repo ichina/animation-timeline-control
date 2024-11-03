@@ -1,13 +1,23 @@
 // src/platform/WebPlatformContext.ts
+import { WebCanvasElement, WebElement } from './element/WebElement';
+import { IElement } from './IElement';
 import { IPlatformContext, IEventSubscription, IEventListener, PlatformEventType, ITimer } from './IPlatformContext';
 
 export class WebPlatformContext implements IPlatformContext {
-  getElementById(id: string): HTMLElement | null {
-    return document.getElementById(id);
+  getElementById(id: string): IElement | null {
+    const el = document.getElementById(id);
+    if (!el) {
+      return null;
+    }
+    return new WebElement(el);
   }
 
-  createElement(tagName: string): HTMLElement {
-    return document.createElement(tagName);
+  createElement(tagName: string): IElement {
+    if (tagName === 'canvas') {
+      const el = document.createElement(tagName);
+      return new WebCanvasElement(el);
+    }
+    return new WebElement(document.createElement(tagName));
   }
 
   addEventListener(type: PlatformEventType, listener: IEventListener): IEventSubscription {

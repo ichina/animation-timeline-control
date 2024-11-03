@@ -1,3 +1,5 @@
+import { IElement } from './IElement';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface IEventSubscription {
   remove(): void;
@@ -15,8 +17,8 @@ export interface ITimer {
 
 export interface IPlatformContext {
   // Element creation and querying
-  getElementById(id: string): any;
-  createElement(tagName: string): any;
+  getElementById(id: string): IElement | null;
+  createElement(tagName: string): IElement | null;
 
   // Event handling
   addEventListener(type: PlatformEventType, listener: IEventListener): IEventSubscription;

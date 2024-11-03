@@ -1,3 +1,4 @@
+import type { PointInit } from '../../drawing/IDrawingContext';
 import { TimelineCursorType } from '../../enums/timelineCursorType';
 import { TimelineKeyframeStyle } from '../styles/timelineKeyframeStyle';
 
@@ -22,7 +23,7 @@ export interface TimelineGroupStyle {
   /**
    * Group border radius. See canvas roundRect official documentation.
    */
-  radii?: number | DOMPointInit | Iterable<number | DOMPointInit>;
+  radii?: number | PointInit | Iterable<number | PointInit>;
 
   /**
    * Group fill color.

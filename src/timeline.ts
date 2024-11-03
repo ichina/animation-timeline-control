@@ -53,7 +53,7 @@ import { defaultTimelineConsts } from './settings/defaults/defaultTimelineConsts
 import { defaultTimelineOptions } from './settings/defaults/defaultTimelineOptions';
 
 import { DrawingContextFactory } from './drawing/DrawingContextFactory';
-import { IDrawingContext } from './drawing/IDrawingContext';
+import { IDrawingContext, Point, Rect } from './drawing/IDrawingContext';
 
 export class Timeline extends TimelineEventsEmitter {
   /**
@@ -84,7 +84,7 @@ export class Timeline extends TimelineEventsEmitter {
   /**
    * Drag scroll started position.
    */
-  _scrollStartPos: DOMPoint | null = null;
+  _scrollStartPos: Point | null = null;
   /**
    * Private. Current mouse position that is used to track values between mouse up/down events.
    * Can be null, use public methods and properties instead.
@@ -94,7 +94,7 @@ export class Timeline extends TimelineEventsEmitter {
   /**
    * Private. Current active mouse area selection rectangle displayed during the mouse up/down drag events.
    */
-  _selectionRect: DOMRect | null = null;
+  _selectionRect: Rect | null = null;
   /**
    * Private. Whether selection rectangle is displayed.
    */
@@ -108,7 +108,7 @@ export class Timeline extends TimelineEventsEmitter {
   _scrollProgrammatically = false;
   _clickTimeout: number | null = null;
   _lastClickTime = 0;
-  _lastClickPoint: DOMPoint | null = null;
+  _lastClickPoint: Point | null = null;
   _consts: TimelineConsts = defaultTimelineConsts;
   /**
    * Private. whether click is allowed.
@@ -573,7 +573,7 @@ export class Timeline extends TimelineEventsEmitter {
     }
 
     this._lastClickPoint = this._startPosMouseArgs.pos;
-    this._scrollStartPos = { x: this._scrollContainer.scrollLeft, y: this._scrollContainer.scrollTop } as DOMPoint;
+    this._scrollStartPos = { x: this._scrollContainer.scrollLeft, y: this._scrollContainer.scrollTop } as Point;
     this._clickAllowed = true;
     let onlyElements: TimelineElementType[] | null = null;
     if (this._interactionMode === TimelineInteractionMode.NonInteractivePan || this._interactionMode === TimelineInteractionMode.None) {
@@ -905,7 +905,7 @@ export class Timeline extends TimelineEventsEmitter {
    * Get all keyframes under the screen rectangle.
    * @param screenRect screen coordinates to get keyframes.
    */
-  _getKeyframesByRectangle = (screenRect: DOMRect): TimelineKeyframe[] => {
+  _getKeyframesByRectangle = (screenRect: Rect): TimelineKeyframe[] => {
     const keyframesModels: Array<TimelineKeyframe> = [];
     this._forEachKeyframe((keyframeViewModel) => {
       const intersects =
@@ -1206,7 +1206,7 @@ export class Timeline extends TimelineEventsEmitter {
 
     if (this._startPosMouseArgs) {
       if (!this._selectionRect) {
-        this._selectionRect = {} as DOMRect;
+        this._selectionRect = {} as Rect;
       }
       const startPos = this._startPosMouseArgs.pos;
       // get the pos with the virtualization:
@@ -1308,7 +1308,7 @@ export class Timeline extends TimelineEventsEmitter {
   /**
    * Scroll virtual canvas when pan mode is enabled.
    */
-  _scrollByPan(start: DOMPoint, pos: DOMPoint, scrollStartPos: DOMPoint | null): void {
+  _scrollByPan(start: Point, pos: Point, scrollStartPos: Point | null): void {
     if (!start || !pos || !this._scrollContainer) {
       return;
     }
@@ -1333,7 +1333,7 @@ export class Timeline extends TimelineEventsEmitter {
     this.scrollTop = Math.round(y + start.y - pos.y);
   }
 
-  _scrollBySelectionOutOfBounds(pos: DOMPoint): boolean {
+  _scrollBySelectionOutOfBounds(pos: Point): boolean {
     if (!this._scrollContainer) {
       return false;
     }
@@ -1643,7 +1643,7 @@ export class Timeline extends TimelineEventsEmitter {
         y: 0,
         width: 0,
         height: 0,
-      } as DOMRect,
+      } as Rect,
       min: null,
       max: null,
       rowsViewModels: [],
@@ -1673,7 +1673,7 @@ export class Timeline extends TimelineEventsEmitter {
       }
 
       toReturn.size.height = Math.max(rowAbsoluteHeight + rowHeight, toReturn.size.height);
-      const rowSize = { x: 0, y: currentRowY, width: this._canvasClientWidth(), height: rowHeight } as DOMRect;
+      const rowSize = { x: 0, y: currentRowY, width: this._canvasClientWidth(), height: rowHeight } as Rect;
       const rowViewModel = {
         size: rowSize,
         marginBottom: marginBottom,
@@ -1853,7 +1853,7 @@ export class Timeline extends TimelineEventsEmitter {
    * Method is used for the canvas drawing optimization.
    * Bounds are cut to draw only visible parts for the active canvas.
    */
-  _cutBounds = (rect: DOMRect): TimelineCutBoundsRectResults | null => {
+  _cutBounds = (rect: Rect): TimelineCutBoundsRectResults | null => {
     if (!rect) {
       return null;
     }
@@ -1866,7 +1866,7 @@ export class Timeline extends TimelineEventsEmitter {
 
     return this._cutBoundsWhenOverlap(rect, minX, maxX, minY, maxY);
   };
-  _cutBoundsWhenOverlap = (rect: DOMRect, minX: number, maxX: number, minY: number, maxY: number): TimelineCutBoundsRectResults | null => {
+  _cutBoundsWhenOverlap = (rect: Rect, minX: number, maxX: number, minY: number, maxY: number): TimelineCutBoundsRectResults | null => {
     if (!rect) {
       return null;
     }
@@ -1878,7 +1878,7 @@ export class Timeline extends TimelineEventsEmitter {
         y: minY,
         width: TimelineUtils.getDistance(minX, maxX),
         height: TimelineUtils.getDistance(minY, maxY),
-      } as DOMRect)
+      } as Rect)
     ) {
       const y = Math.max(rect.y, minY);
       const x = Math.max(rect.x, minX);
@@ -1898,7 +1898,7 @@ export class Timeline extends TimelineEventsEmitter {
    * @param row
    * @param rowY row screen coords y position
    */
-  _getKeyframesGroupSize = (groupViewModel: TimelineGroupViewModel, rowViewModel: TimelineRowViewModel): DOMRect => {
+  _getKeyframesGroupSize = (groupViewModel: TimelineGroupViewModel, rowViewModel: TimelineRowViewModel): Rect => {
     const rowY = rowViewModel.size.y;
     const rowHeight = rowViewModel.size.height;
     const groupModel = groupViewModel.groupModel || null;
@@ -1937,10 +1937,10 @@ export class Timeline extends TimelineEventsEmitter {
       y: rowY + marginTop,
       height: groupHeight,
       width: TimelineUtils.getDistance(xMin, xMax),
-    } as DOMRect;
+    } as Rect;
   };
 
-  _getKeyframePosition = (keyframe: TimelineKeyframe, groupViewModel: TimelineGroupViewModel, rowViewModel: TimelineRowViewModel, keyframeShape: TimelineKeyframeShape): DOMRect | null => {
+  _getKeyframePosition = (keyframe: TimelineKeyframe, groupViewModel: TimelineGroupViewModel, rowViewModel: TimelineRowViewModel, keyframeShape: TimelineKeyframeShape): Rect | null => {
     if (!keyframe) {
       console.log('keyframe should be defined.');
       return null;
@@ -1973,7 +1973,7 @@ export class Timeline extends TimelineEventsEmitter {
         y: y,
         height: height,
         width: width,
-      } as DOMRect;
+      } as Rect;
       // Rect we are drawing in the center
       if (keyframeShape === TimelineKeyframeShape.Rect) {
         rect.y = rect.y - rect.height / 2;
@@ -2000,7 +2000,7 @@ export class Timeline extends TimelineEventsEmitter {
           y: y - size.height / 2,
           width: size.width,
           height: size.height,
-        } as DOMRect);
+        } as Rect);
         if (!bounds) {
           return;
         }
@@ -2433,7 +2433,7 @@ export class Timeline extends TimelineEventsEmitter {
     const y = (clientY - rect.top) * scaleY;
     // scale mouse coordinates after they have been adjusted to be relative to element
     return {
-      pos: { x, y } as DOMPoint,
+      pos: { x, y } as Point,
       radius,
       args: e,
     } as TimelineMouseData;
@@ -2608,7 +2608,7 @@ export class Timeline extends TimelineEventsEmitter {
   /**
    * get all clickable elements by the given local screen coordinate.
    */
-  public elementFromPoint = (pos: DOMPoint, clickRadius: number, onlyTypes?: TimelineElementType[] | null): TimelineElement[] => {
+  public elementFromPoint = (pos: Point, clickRadius: number, onlyTypes?: TimelineElementType[] | null): TimelineElement[] => {
     clickRadius = Math.max(clickRadius, 1);
     const toReturn: TimelineElement[] = [];
 
@@ -2668,7 +2668,7 @@ export class Timeline extends TimelineEventsEmitter {
           if (keyframePosRect) {
             let isMouseOver = false;
             if (keyframeViewModel.shape === TimelineKeyframeShape.Rect) {
-              const extendedMouseRect = TimelineUtils.shrinkSelf({ x: pos.x, y: pos.y, height: clickRadius, width: clickRadius } as DOMRect, clickRadius);
+              const extendedMouseRect = TimelineUtils.shrinkSelf({ x: pos.x, y: pos.y, height: clickRadius, width: clickRadius } as Rect, clickRadius);
               isMouseOver = TimelineUtils.isRectIntersects(extendedMouseRect, keyframePosRect, true);
             } else {
               const dist = TimelineUtils.getDistance(keyframePosRect.x, keyframePosRect.y, pos.x, pos.y);

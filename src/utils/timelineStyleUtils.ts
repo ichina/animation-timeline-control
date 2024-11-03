@@ -10,6 +10,7 @@ import { TimelineRow } from '../models/timelineRow';
 import { defaultGroupStyle } from '../settings/defaults/defaultGroupStyle';
 import { defaultTimelineKeyframeStyle } from '../settings/defaults/defaultTimelineKeyframeStyle';
 import { defaultTimelineRowStyle } from '../settings/defaults/defaultTimelineRowStyle';
+import type { PointInit } from '../drawing/IDrawingContext';
 
 const undefinedConst = typeof undefined;
 
@@ -310,7 +311,7 @@ export class TimelineStyleUtils {
     options: TimelineOptions | null | undefined,
     group: TimelineGroup | string | null | undefined,
     rowStyle: TimelineRowStyle | null | undefined,
-  ): number | DOMPointInit | Iterable<number | DOMPointInit> {
+  ): number | PointInit | Iterable<number | PointInit> {
     return (
       TimelineStyleUtils.getFirstSet(
         // default value

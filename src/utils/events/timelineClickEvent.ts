@@ -1,3 +1,4 @@
+import type { Point } from '../../drawing/IDrawingContext';
 import { TimelineElement } from '../timelineElement';
 import { TimelinePoint } from '../timelinePoint';
 import { TimelineBaseEvent } from './timelineBaseEvent';
@@ -7,7 +8,7 @@ export class TimelineClickEvent extends TimelineBaseEvent {
   /**
    * Clicked screen position.
    */
-  get pos(): DOMPoint | null {
+  get pos(): Point | null {
     return this.point?.pos || null;
   }
   get val(): number {

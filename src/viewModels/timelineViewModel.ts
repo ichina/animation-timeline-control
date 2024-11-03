@@ -1,11 +1,11 @@
 import { TimelineKeyframeViewModel } from './timelineKeyframeViewModel';
 import { TimelineRowViewModel } from './timelineRowViewModel';
-
+import { Rect } from '../drawing/IDrawingContext';
 export interface TimelineViewModel {
   /**
    * Screen coordinates of the element.
    */
-  size: DOMRect;
+  size: Rect;
   /**
    * Keyframes view models.
    */

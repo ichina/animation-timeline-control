@@ -1,3 +1,5 @@
+import type { Point } from '../drawing/IDrawingContext';
+
 /**
  * Timeline values interface.
  */
@@ -18,5 +20,5 @@ export interface TimelinePoint {
   /**
    * Screen click point.
    */
-  pos: DOMPoint;
+  pos: Point;
 }

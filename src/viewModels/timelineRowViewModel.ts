@@ -1,3 +1,4 @@
+import type { Rect } from '../drawing/IDrawingContext';
 import { TimelineRow } from '../models/timelineRow';
 import { TimelineGroupViewModel } from './timelineGroupViewModel';
 import { TimelineKeyframeViewModel } from './timelineKeyframeViewModel';
@@ -6,7 +7,7 @@ export interface TimelineRowViewModel {
   /**
    * Screen coordinates of the element.
    */
-  size: DOMRect;
+  size: Rect;
   /**
    * Related row model.
    */

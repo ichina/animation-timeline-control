@@ -1,6 +1,6 @@
 import { TimelineRanged } from '../models/timelineRanged';
 import { TimelineOptions } from '../settings/timelineOptions';
-import { IDrawingContext } from '../drawing/IDrawingContext';
+import { IDrawingContext, Rect } from '../drawing/IDrawingContext';
 
 const defaultDenominators = [1, 2, 5, 10];
 export class TimelineUtils {
@@ -29,7 +29,7 @@ export class TimelineUtils {
   /**
    * Check rectangle overlap x,y
    */
-  static isOverlap(x: number, y: number, rectangle: DOMRect): boolean {
+  static isOverlap(x: number, y: number, rectangle: Rect): boolean {
     if (!rectangle) {
       return false;
     }
@@ -114,7 +114,7 @@ export class TimelineUtils {
 
     return to;
   }
-  static shrinkSelf(rect: DOMRect, value: number): DOMRect {
+  static shrinkSelf(rect: Rect, value: number): Rect {
     if (!rect) {
       return rect;
     }
@@ -127,7 +127,7 @@ export class TimelineUtils {
   /**
    * Check whether rectangle intersects another rectangle
    */
-  static isRectIntersects(rect: DOMRect, rect2: DOMRect, touch = false): boolean {
+  static isRectIntersects(rect: Rect, rect2: Rect, touch = false): boolean {
     if (!rect || !rect2) {
       console.log('Rectangles cannot be empty');
       return false;

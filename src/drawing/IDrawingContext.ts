@@ -3,6 +3,13 @@ export interface Point {
   y: number;
 }
 
+export interface PointInit {
+  w?: number;
+  x?: number;
+  y?: number;
+  z?: number;
+}
+
 export interface Size {
   width: number;
   height: number;

@@ -1,3 +1,4 @@
+import type { Rect } from '../drawing/IDrawingContext';
 import { TimelineKeyframeShape } from '../enums/timelineKeyframeShape';
 import { TimelineKeyframe } from '../models/timelineKeyframe';
 import { TimelineGroupViewModel } from './timelineGroupViewModel';
@@ -10,7 +11,7 @@ export interface TimelineKeyframeViewModel {
   /**
    * Size of the keyframe.
    */
-  size: DOMRect;
+  size: Rect;
   shape: TimelineKeyframeShape;
   /**
    * Related keyframe model.

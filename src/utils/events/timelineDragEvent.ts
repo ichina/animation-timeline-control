@@ -1,10 +1,11 @@
 import { TimelinePoint } from '../timelinePoint';
 import { TimelineBaseEvent } from './timelineBaseEvent';
 import { TimelineElementDragState } from '../timelineElementDragState';
+import type { Point } from '../../drawing/IDrawingContext';
 
 export class TimelineDragEvent extends TimelineBaseEvent {
   args: MouseEvent | TouchEvent | null = null;
-  get pos(): DOMPoint | null {
+  get pos(): Point | null {
     return this.point?.pos || null;
   }
   /**

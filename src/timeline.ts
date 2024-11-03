@@ -54,6 +54,8 @@ import { defaultTimelineOptions } from './settings/defaults/defaultTimelineOptio
 
 import { DrawingContextFactory } from './drawing/DrawingContextFactory';
 import { IDrawingContext, Point, Rect } from './drawing/IDrawingContext';
+import { IEventSubscription, IPlatformContext, ITimer } from './platform/IPlatformContext';
+import { PlatformContextFactory } from './platform/PlatformContextFactory';
 
 export class Timeline extends TimelineEventsEmitter {
   /**
@@ -117,7 +119,7 @@ export class Timeline extends TimelineEventsEmitter {
   /**
    * Private. scroll finished timer reference.
    */
-  _scrollFinishedTimerRef?: number | null = null;
+  _scrollFinishedTimerRef?: ITimer | null = null;
   /**
    * Private.Current timeline position.
    * Please use public get\set methods to properly change the timeline position.
@@ -131,7 +133,7 @@ export class Timeline extends TimelineEventsEmitter {
   /**
    * Private. Ref for the auto pan scroll interval.
    */
-  _intervalRef?: number | null = null;
+  _intervalRef?: ITimer | null = null;
   /**
    * Private.
    * When last auto pan scroll action was started.
@@ -165,6 +167,9 @@ export class Timeline extends TimelineEventsEmitter {
    */
   private _drawingContext: IDrawingContext | null = null;
 
+  private platform: IPlatformContext;
+  private subscriptions: IEventSubscription[] = [];
+
   /**
    * Create Timeline instance
    * @param options Timeline settings.
@@ -173,6 +178,7 @@ export class Timeline extends TimelineEventsEmitter {
   constructor(options: TimelineOptions | null = null, model: TimelineModel | null = null) {
     super();
     this._options = TimelineUtils.cloneOptions(defaultTimelineOptions);
+    this.platform = PlatformContextFactory.getInstance();
 
     // Allow to create instance without an error to perform tests.
     if (options || model) {
@@ -209,7 +215,7 @@ export class Timeline extends TimelineEventsEmitter {
     if (id instanceof HTMLElement) {
       this._container = id as HTMLElement;
     } else {
-      this._container = document.getElementById(id);
+      this._container = this.platform.getElementById(id);
     }
 
     if (!this._container) {
@@ -217,8 +223,8 @@ export class Timeline extends TimelineEventsEmitter {
     }
 
     this._scrollContainer = document.createElement('div');
-    this._scrollContent = document.createElement('div');
-    this._canvas = document.createElement('canvas');
+    this._scrollContent = this.platform.createElement('div') as HTMLElement;
+    this._canvas = document.createElement('canvas') as HTMLCanvasElement;
 
     if (!this._canvas || !this._canvas.getContext) {
       console.log('Cannot initialize canvas context.');
@@ -280,19 +286,21 @@ export class Timeline extends TimelineEventsEmitter {
       this._scrollContainer.addEventListener('touchstart', this._handleScrollMouseDownEvent);
       this._scrollContainer.addEventListener('mousedown', this._handleScrollMouseDownEvent);
     }
-    document.addEventListener('keyup', this._handleKeyUp, false);
-    document.addEventListener('keydown', this._handleKeyDown, false);
-    window.addEventListener('blur', this._handleBlurEvent, false);
-    window.addEventListener('resize', this._handleWindowResizeEvent, false);
     if (this._canvas) {
       this._canvas.addEventListener('touchstart', this._handleMouseDownEvent, false);
       this._canvas.addEventListener('mousedown', this._handleMouseDownEvent, false);
       this._canvas.addEventListener('contextmenu', this._handleContextMenu, false);
     }
-    window.addEventListener('mousemove', this._handleMouseMoveEvent, false);
-    window.addEventListener('touchmove', this._handleMouseMoveEvent, false);
-    window.addEventListener('mouseup', this._handleMouseUpEvent, false);
-    window.addEventListener('touchend', this._handleMouseUpEvent, false);
+    this.subscriptions = [
+      this.platform.addEventListener('resize', this._handleWindowResizeEvent),
+      this.platform.addEventListener('blur', this._handleBlurEvent),
+      this.platform.addEventListener('keyup', this._handleKeyUp),
+      this.platform.addEventListener('keydown', this._handleKeyDown),
+      this.platform.addEventListener('mousemove', this._handleMouseMoveEvent),
+      this.platform.addEventListener('mouseup', this._handleMouseUpEvent),
+      this.platform.addEventListener('touchmove', this._handleMouseMoveEvent),
+      this.platform.addEventListener('touchend', this._handleMouseMoveEvent),
+    ];
   };
 
   /**
@@ -308,10 +316,6 @@ export class Timeline extends TimelineEventsEmitter {
     } else {
       console.warn(`Cannot unsubscribe scroll while it's already empty`);
     }
-    window.removeEventListener('blur', this._handleBlurEvent);
-    window.removeEventListener('resize', this._handleWindowResizeEvent);
-    document.removeEventListener('keydown', this._handleKeyDown);
-    document.removeEventListener('keyup', this._handleKeyUp);
     if (this._canvas) {
       this._canvas.removeEventListener('touchstart', this._handleMouseDownEvent);
       this._canvas.removeEventListener('mousedown', this._handleMouseDownEvent);
@@ -319,10 +323,8 @@ export class Timeline extends TimelineEventsEmitter {
     } else {
       console.warn(`Cannot unsubscribe canvas while it's already empty`);
     }
-    window.removeEventListener('mousemove', this._handleMouseMoveEvent);
-    window.removeEventListener('touchmove', this._handleMouseMoveEvent);
-    window.removeEventListener('mouseup', this._handleMouseUpEvent);
-    window.removeEventListener('touchend', this._handleMouseUpEvent);
+    this.subscriptions.forEach((subscription) => subscription.remove());
+    this.subscriptions = [];
   };
   /**
    * Dispose current component: unsubscribe component and user events.
@@ -378,7 +380,7 @@ export class Timeline extends TimelineEventsEmitter {
 
   _clearScrollFinishedTimer = (): void => {
     if (this._scrollFinishedTimerRef) {
-      clearTimeout(this._scrollFinishedTimerRef);
+      this._scrollFinishedTimerRef.clear();
       this._scrollFinishedTimerRef = null;
     }
   };
@@ -394,7 +396,7 @@ export class Timeline extends TimelineEventsEmitter {
     this._clearScrollFinishedTimer();
     // Set a timeout to run event 'scrolling end'.
     // Auto scroll is used to repeat scroll when drag element or select items outside of the visible area.
-    this._scrollFinishedTimerRef = window.setTimeout(() => {
+    this._scrollFinishedTimerRef = this.platform.setTimeout(() => {
       if (!this._isPanStarted) {
         this._clearScrollFinishedTimer();
 
@@ -524,7 +526,7 @@ export class Timeline extends TimelineEventsEmitter {
 
   _handleContextMenu = (args: MouseEvent | TouchEvent): void => {
     // Prevent drag of the canvas if canvas is selected as text:
-    TimelineUtils.clearBrowserSelection();
+    this.platform.clearSelection;
     if (!this._canvas || !this._scrollContainer) {
       this._cleanUpSelection();
       return;
@@ -552,7 +554,7 @@ export class Timeline extends TimelineEventsEmitter {
    */
   _handleMouseDownEvent = (args: MouseEvent | TouchEvent): void => {
     // Prevent drag of the canvas if canvas is selected as text:
-    TimelineUtils.clearBrowserSelection();
+    this.platform.clearSelection;
     if (!this._canvas || !this._scrollContainer) {
       this._cleanUpSelection();
       return;
@@ -1273,7 +1275,7 @@ export class Timeline extends TimelineEventsEmitter {
     if (this._consts.autoPanSpeed) {
       if (!this._intervalRef) {
         // Repeat move calls to
-        this._intervalRef = window.setInterval(() => {
+        this._intervalRef = this.platform.setInterval(() => {
           this._handleMouseMoveEvent(null);
         }, this._consts.autoPanSpeed);
       }
@@ -1285,7 +1287,7 @@ export class Timeline extends TimelineEventsEmitter {
    */
   _stopAutoPan = (): void => {
     if (this._intervalRef) {
-      clearInterval(this._intervalRef);
+      this._intervalRef.clear();
       this._intervalRef = null;
     }
 
@@ -2216,11 +2218,7 @@ export class Timeline extends TimelineEventsEmitter {
   };
 
   redraw = (): void => {
-    if (window?.requestAnimationFrame) {
-      window.requestAnimationFrame(this._redrawInternal);
-    } else {
-      this._redrawInternal();
-    }
+    this.platform.requestAnimationFrame(this._redrawInternal);
   };
 
   /**

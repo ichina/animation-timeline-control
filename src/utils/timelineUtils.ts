@@ -182,26 +182,6 @@ export class TimelineUtils {
     return p >= 0 ? 1 : -1;
   }
 
-  /**
-   * Clear browser text selection.
-   */
-  static clearBrowserSelection(): void {
-    if (!window) {
-      return;
-    }
-    if (window.getSelection) {
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-      }
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const doc: any = window.document;
-      if (doc.selection) {
-        doc.selection.empty();
-      }
-    }
-  }
   static getPowArgument(toCheck: number): number {
     if (!toCheck || toCheck === 0 || !isFinite(toCheck)) {
       return 1;
